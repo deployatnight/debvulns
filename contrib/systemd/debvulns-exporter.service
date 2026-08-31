@@ -1,0 +1,36 @@
+[Unit]
+Description=Debvulns Prometheus Exporter
+Documentation=https://github.com/deployatnight/debsecan-mcp
+# Wait for the network stack to be fully up before starting.
+# The exporter's internal exponential backoff handles transient
+# failures that may still occur after the network is reported ready.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/debvulns-exporter \
+    --port 9222 \
+    --refresh-interval 86400 \
+    --cache-dir /var/cache/debvulns
+Restart=on-failure
+RestartSec=30s
+User=debvulns
+Group=debvulns
+
+# ---- Security hardening ----
+NoNewPrivileges=true
+PrivateTmp=true
+# Allow reading system files but nothing writeable system-wide.
+# ReadWritePaths carves out the one directory we actually need.
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/cache/debvulns
+
+# ---- Logging ----
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=debvulns-exporter
+
+[Install]
+WantedBy=multi-user.target
