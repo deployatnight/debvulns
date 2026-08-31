@@ -147,7 +147,7 @@ debvulns_vulnerability_info{severity=~"critical|high"}
 ```text
 # HELP debvulns_exporter_info Metadata about the exporter configuration.
 # TYPE debvulns_exporter_info gauge
-debvulns_exporter_info{suite="trixie",version="0.2.2-go"} 1
+debvulns_exporter_info{suite="trixie",version="0.1.2"} 1
 
 # HELP debvulns_scan_status 1 if the last vulnerability scan completed successfully, 0 otherwise.
 # TYPE debvulns_scan_status gauge
