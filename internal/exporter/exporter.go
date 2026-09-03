@@ -25,6 +25,8 @@
 //	debvulns_vulnerability_fix_info{cve,package,fix_version}
 //	debvulns_vulnerability_epss_score{cve,package}
 //	debvulns_vulnerability_epss_percentile{cve,package}
+//	debvulns_package_max_version{package,max_version}
+//	debvulns_vulnerability_fix_in_release{cve,package,fix_in_release}
 package exporter
 
 import (
@@ -150,6 +152,8 @@ type collector struct {
 	vulnFixInfo    *prometheus.Desc
 	epssScore      *prometheus.Desc
 	epssPercentile *prometheus.Desc
+	pkgMaxVersion  *prometheus.Desc
+	vulnFixInRel   *prometheus.Desc
 }
 
 func newCollector(c *cache.Cache, suite string) *collector {
@@ -211,6 +215,16 @@ func newCollector(c *cache.Cache, suite string) *collector {
 			"The EPSS percentile rank of the detected vulnerability.",
 			[]string{"cve", "package"}, nil,
 		),
+		pkgMaxVersion: prometheus.NewDesc(
+			"debvulns_package_max_version",
+			"Maximum available version for each package within the current release.",
+			[]string{"package", "max_version"}, nil,
+		),
+		vulnFixInRel: prometheus.NewDesc(
+			"debvulns_vulnerability_fix_in_release",
+			"Indicates whether a fix is available within the current release (1=yes, 0=no).",
+			[]string{"cve", "package", "fix_in_release"}, nil,
+		),
 	}
 }
 
@@ -227,6 +241,8 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.vulnFixInfo
 	ch <- c.epssScore
 	ch <- c.epssPercentile
+	ch <- c.pkgMaxVersion
+	ch <- c.vulnFixInRel
 }
 
 // Collect implements prometheus.Collector. It is called on every scrape and
@@ -283,6 +299,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 
 	// --- Per-(cve, package) metrics ------------------------------------
 	seenPackages := map[string]struct{}{}
+	maxVersionsEmitted := map[string]struct{}{}
 	for severity, vs := range result.Categorized {
 		for _, v := range vs {
 			pkgName := v.InstalledPackage
@@ -308,12 +325,33 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 				c.epssPercentile, prometheus.GaugeValue, v.EPSSPercentile,
 				v.BugID, pkgName)
 
+			// Emit fix-in-release metric if available
+			if v.MaxReleaseVersion != "" {
+				fixInRel := "false"
+				if v.FixInRelease {
+					fixInRel = "true"
+				}
+				ch <- prometheus.MustNewConstMetric(
+					c.vulnFixInRel, prometheus.GaugeValue, 1,
+					v.BugID, pkgName, fixInRel)
+			}
+
 			// One series per package (not per CVE).
 			if _, ok := seenPackages[pkgName]; !ok {
 				seenPackages[pkgName] = struct{}{}
 				ch <- prometheus.MustNewConstMetric(
 					c.pkgInfo, prometheus.GaugeValue, 1,
 					pkgName, installedVersion(v))
+
+				// Emit max version for this package (once per package)
+				if v.MaxReleaseVersion != "" {
+					if _, emitted := maxVersionsEmitted[pkgName]; !emitted {
+						maxVersionsEmitted[pkgName] = struct{}{}
+						ch <- prometheus.MustNewConstMetric(
+							c.pkgMaxVersion, prometheus.GaugeValue, 1,
+							pkgName, v.MaxReleaseVersion)
+					}
+				}
 			}
 		}
 	}

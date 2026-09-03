@@ -2,7 +2,7 @@
   "__inputs": [
     {
       "name": "DS_PROMETHEUS",
-      "label": "Prometheus (debvulns exporter)",
+      "label": "Prometheus",
       "description": "Prometheus datasource scraping one or more debvulns-exporter instances",
       "type": "datasource",
       "pluginId": "prometheus",
@@ -37,12 +37,6 @@
     },
     {
       "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    },
-    {
-      "type": "panel",
       "id": "table",
       "name": "Table",
       "version": ""
@@ -58,26 +52,11 @@
         },
         "enable": true,
         "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
         "type": "dashboard"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
-        },
-        "enable": true,
-        "expr": "changes(debvulns_scan_status[10m]) > 0",
-        "hide": false,
-        "iconColor": "red",
-        "name": "debvulns scan state change",
-        "step": "60s",
-        "titleFormat": "Scan status changed on {{instance}}"
       }
     ]
   },
-  "description": "Debian package vulnerability monitoring for deployatnight/debvulns (Go) exporter. Blocks: Scanner Health (data trust) -> Exposure KPIs + trend -> Act Now (remediation mapping Installed Version -> Fix Version) -> Inventory & Fleet. NOTE: the EPSS Data Health panel is a heuristic (all-zero EPSS detection) until the exporter ships a dedicated debvulns_epss_status metric.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -85,61 +64,29 @@
   "liveNow": false,
   "panels": [
     {
-      "id": 1,
-      "type": "row",
-      "title": "Scanner Health — can I trust the data?",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "panels": []
-    },
-    {
-      "id": 2,
-      "type": "stat",
-      "title": "Scan Status",
-      "description": "1 = last scan succeeded on ALL selected instances (min across fleet). 0 = scan failed; the dashboard may still show a retained last-good snapshot. Matches alert DebvulnsScanFailed.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 1
-      },
+      "description": "Whether the last vulnerability scan completed successfully.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
           "mappings": [
             {
-              "type": "value",
               "options": {
-                "1": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "OK"
-                },
                 "0": {
                   "color": "red",
-                  "index": 1,
-                  "text": "FAIL"
+                  "text": "FAILED"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "OK"
                 }
-              }
+              },
+              "type": "value"
             }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "green",
@@ -150,11 +97,17 @@
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -162,9 +115,7 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
+        "textMode": "value"
       },
       "targets": [
         {
@@ -173,46 +124,34 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "min(debvulns_scan_status{instance=~\"$instance\"})",
+          "expr": "debvulns_scan_status{instance=~\"^$instance$\"}",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Scan Status",
+      "type": "stat"
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Scan Age (oldest instance)",
-      "description": "Time since the oldest successful scan across selected instances. Default refresh-interval is 24h: green < 8h, yellow < 24h, red >= 24h (stale feed = blind to new CVEs). Matches alert DebvulnsNoScanReporting.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 1
-      },
+      "description": "Time elapsed since the oldest scan across selected instances. Green = fresh, red = stale.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 1,
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
-                "value": 28800
+                "value": 3600
+              },
+              {
+                "color": "orange",
+                "value": 21600
               },
               {
                 "color": "red",
@@ -224,11 +163,17 @@
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -236,9 +181,7 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
+        "textMode": "value"
       },
       "targets": [
         {
@@ -247,72 +190,108 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "time() - min(debvulns_last_scan_timestamp_seconds{instance=~\"$instance\"})",
+          "expr": "time() - min(debvulns_last_scan_timestamp_seconds{instance=~\"^$instance$\"})",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Scan Age",
+      "type": "stat"
     },
     {
+      "description": "Number of distinct CVE identifiers across all selected instances (fleet-wide unique). A single CVE affecting multiple hosts is counted once here. Multiply by number of monitored assets to estimate total remediation workload across the fleet.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "count(group by (cve) (debvulns_vulnerability_info{instance=~\"^$instance$\"}))",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Unique CVEs",
+      "type": "stat"
+    },
+    {
+      "description": "Distinct critical or high severity CVEs across selected instances (fleet-wide unique). Each CVE is counted once regardless of how many hosts are affected — these are the highest priority to remediate.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
       "id": 4,
-      "type": "stat",
-      "title": "EPSS Data Health (heuristic)",
-      "description": "Heuristic until the exporter exposes debvulns_epss_status: 1 = every selected instance has nonzero EPSS scores for all its CVEs; 0 = EPSS data missing (all scores silently zeroed — the exporter keeps scan_status=1 on EPSS download failure) or some CVEs genuinely score 0. If SUSPECT, do not trust EPSS-based ordering in 'Patch Now' / tables.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 1
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "1": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "OK"
-                },
-                "0": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "SUSPECT"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -320,9 +299,7 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
+        "textMode": "value"
       },
       "targets": [
         {
@@ -331,57 +308,45 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "min(count by (instance) (debvulns_vulnerability_epss_score{instance=~\"$instance\"} > 0) == bool count by (instance) (debvulns_vulnerability_info{instance=~\"$instance\"}))",
+          "expr": "count(group by (cve) (debvulns_vulnerability_info{severity=~\"critical|high\", instance=~\"^$instance$\"}))",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Critical + High",
+      "type": "stat"
     },
     {
+      "description": "Distinct CVEs where a Debian patch has been released, counted fleet-wide (unique). Each CVE counted once regardless of number of affected hosts. Act on these first.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
       "id": 5,
-      "type": "stat",
-      "title": "Instances Reporting",
-      "description": "Number of selected instances currently exposing debvulns_exporter_info. Combined with 'Scan Age' this distinguishes 'no data' from 'no vulnerabilities'.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 1
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -389,9 +354,7 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
+        "textMode": "value"
       },
       "targets": [
         {
@@ -400,603 +363,56 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count(debvulns_exporter_info{instance=~\"$instance\"})",
+          "expr": "count(group by (cve) (debvulns_vulnerability_info{fix_available=\"true\", instance=~\"^$instance$\"}))",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Fix Available",
+      "type": "stat"
     },
     {
-      "id": 6,
-      "type": "row",
-      "title": "Exposure KPIs",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
-      "panels": []
-    },
-    {
-      "id": 7,
-      "type": "stat",
-      "title": "Affected Packages (selected severity)",
-      "description": "Installed packages carrying at least one CVE in the severities selected by the $severity variable (package × instance pairs). Each pair is one 'apt upgrade' target. Ignores negligible by default to keep signal above noise.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 6
-      },
+      "description": "Number of distinct installed packages with at least one active vulnerability. One package may carry multiple CVEs — this tells you how many apt upgrade targets you have.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "orange",
+                "value": 15
+              },
+              {
+                "color": "red",
                 "value": 30
-              },
-              {
-                "color": "red",
-                "value": 100
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "count(group by (package, instance) (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"$severity\"}))",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 8,
-      "type": "stat",
-      "title": "Unique CVEs (fleet-wide)",
-      "description": "Distinct CVE identifiers across selected instances within the selected severities. A CVE affecting N hosts counts once — this is the size of the analysis backlog, not the patching workload.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 6
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 0
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 50
-              },
-              {
-                "color": "red",
-                "value": 200
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "count(group by (cve) (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"$severity\"}))",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 9,
-      "type": "stat",
-      "title": "Crit/High — Fix Available",
-      "description": "Distinct critical/high CVEs for which Debian already released a patch (independent of the $severity variable). 0 = green. Anything above zero belongs on the remediation worklist below.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "count(group by (cve) (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"critical|high\", fix_available=\"true\"}))",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 10,
-      "type": "stat",
-      "title": "Crit/High — No Fix Yet",
-      "description": "Distinct critical/high CVEs without a Debian patch (fix_available=\"false\"). These cannot be closed by apt upgrade — track upstream, vendor advisories or apply compensating controls. Matches alert DebvulnsRemoteExploitableNoFix when remote=true.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "count(group by (cve) (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"critical|high\", fix_available=\"false\"}))",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 11,
-      "type": "timeseries",
-      "title": "Vulnerability Trend by Severity",
-      "description": "Fleet-wide vulnerability counts per derived severity over time. Downward steps = packages patched or removed; upward steps = new CVEs published or new packages installed. This is the only panel using the pre-aggregated debvulns_vulnerabilities_total metric.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "critical"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#F2495C",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 20
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "high"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FF9830",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "medium"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FADE2A",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "low"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#73BF69",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "negligible"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#8E8E8E",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (severity) (debvulns_vulnerabilities_total{instance=~\"$instance\"})",
-          "instant": false,
-          "legendFormat": "{{severity}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
       "id": 12,
-      "type": "bargauge",
-      "title": "Severity Distribution (current)",
-      "description": "Current fleet-wide counts by derived severity. Severity is computed by the exporter from Debian urgency + EPSS: critical = urgency high AND EPSS > 0.3; high = urgency high OR EPSS > 0.5; medium = urgency medium OR EPSS > 0.1; low / negligible = the rest.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "critical"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#F2495C",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "high"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FF9830",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "medium"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FADE2A",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "low"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#73BF69",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "negligible"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#8E8E8E",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
       "options": {
-        "displayMode": "gradient",
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -1004,9 +420,7 @@
           "fields": "",
           "values": false
         },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "valueMode": "color"
+        "textMode": "value"
       },
       "targets": [
         {
@@ -1015,56 +429,37 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (severity) (debvulns_vulnerabilities_total{instance=~\"$instance\"})",
+          "expr": "count(debvulns_package_info{instance=~\"^$instance$\"})",
           "instant": true,
-          "legendFormat": "{{severity}}",
-          "range": false,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Affected Packages",
+      "type": "stat"
     },
     {
-      "id": 13,
-      "type": "row",
-      "title": "Act Now — Remediation (vulnerable → fixed)",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 3
       },
-      "panels": []
+      "id": 7,
+      "title": "Priority Intelligence",
+      "type": "row"
     },
     {
-      "id": 14,
-      "type": "bargauge",
-      "title": "Patch Now — High EPSS, Fix Available",
-      "description": "Top 10 critical/high (cve, package) pairs by EPSS exploitation probability where Debian already released a patch. EPSS > 0.5 means realistic near-term exploitation risk. Patch these first — the table below gives the exact target versions.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 21
-      },
+      "description": "Top 10 CVEs by exploitation probability where a Debian patch already exists. Address these first.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
           "max": 1,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "blue"
               },
               {
                 "color": "yellow",
@@ -1072,11 +467,11 @@
               },
               {
                 "color": "orange",
-                "value": 0.5
+                "value": 0.3
               },
               {
                 "color": "red",
-                "value": 0.7
+                "value": 0.75
               }
             ]
           },
@@ -1084,21 +479,25 @@
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 8,
       "options": {
         "displayMode": "gradient",
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
-          "values": false
+          "values": true
         },
         "showUnfilled": true,
-        "sizing": "auto",
+        "text": {},
         "valueMode": "color"
       },
       "targets": [
@@ -1108,77 +507,64 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "topk(10, debvulns_vulnerability_epss_score{instance=~\"$instance\"} * on(cve, package, instance) group_left() (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"critical|high\", fix_available=\"true\"}))",
+          "expr": "topk(10,\n  debvulns_vulnerability_epss_score{instance=~\"^$instance$\"}\n  * on(cve, package, instance) group_left()\n    (debvulns_vulnerability_info{instance=~\"^$instance$\", fix_available=\"true\"})\n)",
           "instant": true,
-          "legendFormat": "{{cve}} · {{package}} · {{instance}}",
-          "range": false,
+          "legendFormat": "{{cve}} · {{package}}",
           "refId": "A"
         }
-      ]
+      ],
+      "title": "🔴 Patch Now — High EPSS, Fix Available",
+      "type": "bargauge"
     },
     {
-      "id": 15,
-      "type": "bargauge",
-      "title": "Monitor — High EPSS, No Fix Yet",
-      "description": "Top 10 critical/high (cve, package) pairs by EPSS with no Debian patch available. Cannot be closed by apt upgrade — subscribe to Debian security advisories for the source package, consider backports or compensating controls.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+      "description": "Top 10 CVEs by exploitation probability with no patch available. Monitor for Debian advisories.",
+      "fieldConfig": {
+        "defaults": {
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              },
+              {
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
+                "color": "orange",
+                "value": 0.3
+              },
+              {
+                "color": "red",
+                "value": 0.75
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 12,
-        "y": 21
+        "y": 4
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "max": 1,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 0.1
-              },
-              {
-                "color": "orange",
-                "value": 0.5
-              },
-              {
-                "color": "red",
-                "value": 0.7
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
+      "id": 9,
       "options": {
         "displayMode": "gradient",
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
-          "values": false
+          "values": true
         },
         "showUnfilled": true,
-        "sizing": "auto",
+        "text": {},
         "valueMode": "color"
       },
       "targets": [
@@ -1188,54 +574,191 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "topk(10, debvulns_vulnerability_epss_score{instance=~\"$instance\"} * on(cve, package, instance) group_left() (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"critical|high\", fix_available=\"false\"}))",
+          "expr": "topk(10,\n  debvulns_vulnerability_epss_score{instance=~\"^$instance$\"}\n  * on(cve, package, instance) group_left()\n    (debvulns_vulnerability_info{instance=~\"^$instance$\", fix_available=\"false\"})\n)",
           "instant": true,
-          "legendFormat": "{{cve}} · {{package}} · {{instance}}",
-          "range": false,
+          "legendFormat": "{{cve}} · {{package}}",
           "refId": "A"
         }
-      ]
+      ],
+      "title": "🟡 Monitor — High EPSS, No Fix Yet",
+      "type": "bargauge"
     },
     {
-      "id": 16,
-      "type": "table",
-      "title": "Remediation Plan — Fix Available (Installed → Fix Version)",
-      "description": "The remediation worklist: every vulnerable (cve, package) pair with a released Debian patch, mapped from the currently installed version to the fix version to upgrade to. Built from the 4-way join epss_score × vulnerability_info × package_info × fix_info. Sorted by Severity, then EPSS desc. Respects the $severity filter.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 14,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 13
       },
+      "id": 10,
+      "title": "Full Vulnerability Inventory",
+      "type": "row"
+    },
+    {
+      "description": "All active CVEs enriched with EPSS score, fix version, installed package version, and remediation status. Filter by severity variable above.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "align": "left",
+            "displayMode": "auto",
+            "filterable": true
           }
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Severity"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "critical": {
+                        "color": "dark-red",
+                        "text": "Critical"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "high": {
+                        "color": "orange",
+                        "text": "High"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "medium": {
+                        "color": "yellow",
+                        "text": "Medium"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "low": {
+                        "color": "blue",
+                        "text": "Low"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "negligible": {
+                        "color": "gray",
+                        "text": "Negligible"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fix Available"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "true": {
+                        "color": "green",
+                        "text": "✓ Yes"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "false": {
+                        "color": "red",
+                        "text": "✗ No"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Remote"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "true": {
+                        "color": "red",
+                        "text": "Remote"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "false": {
+                        "color": "blue",
+                        "text": "Local"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "unknown": {
+                        "color": "gray",
+                        "text": "—"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -1247,14 +770,20 @@
                 "value": "percentunit"
               },
               {
-                "id": "decimals",
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
                 "value": 1
               },
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
+                "id": "custom.width",
+                "value": 130
               },
               {
                 "id": "thresholds",
@@ -1262,8 +791,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "blue"
                     },
                     {
                       "color": "yellow",
@@ -1271,84 +799,14 @@
                     },
                     {
                       "color": "orange",
-                      "value": 0.5
+                      "value": 0.3
                     },
                     {
                       "color": "red",
-                      "value": 0.7
+                      "value": 0.75
                     }
                   ]
                 }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Fix Available"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "true": {
-                        "color": "orange",
-                        "index": 0,
-                        "text": "YES — upgrade"
-                      },
-                      "false": {
-                        "color": "red",
-                        "index": 1,
-                        "text": "NO"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Remote"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "true": {
-                        "index": 0,
-                        "text": "YES"
-                      },
-                      "false": {
-                        "index": 1,
-                        "text": "no"
-                      },
-                      "unknown": {
-                        "index": 2,
-                        "text": "?"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Severity"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 110
               }
             ]
           },
@@ -1359,29 +817,53 @@
             },
             "properties": [
               {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View on NVD",
+                    "url": "https://nvd.nist.gov/vuln/detail/${__value.text}"
+                  }
+                ]
+              },
+              {
                 "id": "custom.width",
-                "value": 150
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 11,
       "options": {
-        "cellHeight": "sm",
         "footer": {
           "countRows": false,
-          "fields": "",
+          "enablePagination": true,
           "reducer": [
             "sum"
           ],
           "show": false
         },
+        "frameIndex": 0,
         "showHeader": true,
         "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Severity"
-          },
           {
             "desc": true,
             "displayName": "EPSS Score"
@@ -1395,15 +877,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "exemplar": false,
-          "expr": "(\n  (\n    debvulns_vulnerability_epss_score{instance=~\"$instance\"}\n      * on(cve, package, instance) group_left(severity, urgency, fix_available, remote)\n        debvulns_vulnerability_info{instance=~\"$instance\", fix_available=\"true\", severity=~\"$severity\"}\n  )\n    * on(package, instance) group_left(installed_version)\n      debvulns_package_info{instance=~\"$instance\"}\n)\n  * on(cve, package, instance) group_left(fix_version)\n    debvulns_vulnerability_fix_info{instance=~\"$instance\"}",
+          "expr": "(\n  (\n    debvulns_vulnerability_epss_score{instance=~\"^$instance$\"}\n    * on(cve, package, instance) group_left(severity, urgency, fix_available, remote)\n      debvulns_vulnerability_info{instance=~\"^$instance$\"}\n  )\n  * on(package, instance) group_left(installed_version)\n    debvulns_package_info{instance=~\"^$instance$\"}\n)\n* on(cve, package, instance) group_left(fix_version)\n  debvulns_vulnerability_fix_info{instance=~\"^$instance$\"}",
           "format": "table",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
       ],
+      "title": "Vulnerability Details",
       "transformations": [
         {
           "id": "organize",
@@ -1414,17 +894,16 @@
               "job": true,
               "urgency": true
             },
-            "includeByName": {},
             "indexByName": {
-              "instance": 0,
-              "severity": 1,
-              "cve": 2,
-              "package": 3,
-              "installed_version": 4,
-              "fix_version": 5,
-              "fix_available": 6,
-              "remote": 7,
-              "Value": 8
+              "Value": 8,
+              "cve": 0,
+              "fix_available": 3,
+              "fix_version": 4,
+              "installed_version": 5,
+              "instance": 7,
+              "package": 1,
+              "remote": 6,
+              "severity": 2
             },
             "renameByName": {
               "Value": "EPSS Score",
@@ -1439,173 +918,71 @@
             }
           }
         }
-      ]
+      ],
+      "type": "table"
     },
     {
-      "id": 17,
-      "type": "table",
-      "title": "No Fix Yet — Track Upstream",
-      "description": "Vulnerable (cve, package) pairs with no Debian patch (Fix Version is empty). Prioritise Remote = YES rows and high EPSS. Verify the 'EPSS Data Health' panel is OK before trusting EPSS ordering here — the exporter silently zeroes scores when the EPSS feed download fails.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 43
-      },
+      "description": "Debian suite codename and exporter version per monitored instance. Useful when monitoring mixed fleets (e.g. bookworm + trixie).",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "align": "left",
+            "displayMode": "auto",
+            "filterable": false
           }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "EPSS Score"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percentunit"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 0.1
-                    },
-                    {
-                      "color": "orange",
-                      "value": 0.5
-                    },
-                    {
-                      "color": "red",
-                      "value": 0.7
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Remote"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "true": {
-                        "color": "red",
-                        "index": 0,
-                        "text": "YES"
-                      },
-                      "false": {
-                        "index": 1,
-                        "text": "no"
-                      },
-                      "unknown": {
-                        "color": "yellow",
-                        "index": 2,
-                        "text": "?"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Severity"
+              "options": "Instance"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 200
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "CVE"
+              "options": "Suite"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 150
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Exporter Version"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 5,
+        "w": 10,
+        "x": 0,
+        "y": 28
+      },
+      "id": 13,
       "options": {
-        "cellHeight": "sm",
         "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
           "show": false
         },
         "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Severity"
-          },
-          {
-            "desc": true,
-            "displayName": "EPSS Score"
-          }
-        ]
+        "sortBy": []
       },
       "targets": [
         {
@@ -1614,122 +991,82 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "exemplar": false,
-          "expr": "(\n  (\n    debvulns_vulnerability_epss_score{instance=~\"$instance\"}\n      * on(cve, package, instance) group_left(severity, urgency, fix_available, remote)\n        debvulns_vulnerability_info{instance=~\"$instance\", fix_available=\"false\", severity=~\"$severity\"}\n  )\n    * on(package, instance) group_left(installed_version)\n      debvulns_package_info{instance=~\"$instance\"}\n)\n  * on(cve, package, instance) group_left(fix_version)\n    debvulns_vulnerability_fix_info{instance=~\"$instance\"}",
+          "expr": "debvulns_exporter_info{instance=~\"^$instance$\"}",
           "format": "table",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
       ],
+      "title": "Instance Info",
       "transformations": [
         {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
+              "Value": true,
               "__name__": true,
-              "job": true,
-              "urgency": true,
-              "fix_available": true,
-              "fix_version": true
+              "job": true
             },
-            "includeByName": {},
             "indexByName": {
               "instance": 0,
-              "remote": 1,
-              "severity": 2,
-              "cve": 3,
-              "package": 4,
-              "installed_version": 5,
-              "Value": 6
+              "suite": 1,
+              "version": 2
             },
             "renameByName": {
-              "Value": "EPSS Score",
-              "cve": "CVE",
-              "installed_version": "Installed Version",
               "instance": "Instance",
-              "package": "Package",
-              "remote": "Remote",
-              "severity": "Severity"
+              "suite": "Suite",
+              "version": "Exporter Version"
             }
           }
         }
-      ]
+      ],
+      "type": "table"
     },
     {
-      "id": 18,
-      "type": "row",
-      "title": "Inventory & Fleet",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 33
       },
-      "panels": []
+      "id": 16,
+      "title": "Package & Instance Summary",
+      "type": "row"
     },
     {
-      "id": 19,
-      "type": "table",
-      "title": "Vulnerability Details (full inventory)",
-      "description": "Complete fact table: all active (cve, package) pairs enriched with EPSS, derived severity, Debian urgency, remediation flags and both versions. Select 'negligible' in the $severity variable to see the long tail (typically thousands of rows).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 13,
-        "w": 24,
-        "x": 0,
-        "y": 54
-      },
+      "description": "Number of distinct CVE identifiers per monitored instance. Use this to compare vulnerability exposure across hosts and identify which assets carry the highest unique CVE burden.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "align": "left",
+            "displayMode": "auto",
+            "filterable": true
           }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "EPSS Score"
+              "options": "Instance"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "percentunit"
-              },
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unique CVEs"
+            },
+            "properties": [
               {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
+                "id": "custom.width",
+                "value": 110
               },
               {
                 "id": "thresholds",
@@ -1737,117 +1074,42 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "yellow",
-                      "value": 0.1
+                      "value": 10
                     },
                     {
                       "color": "orange",
-                      "value": 0.5
+                      "value": 30
                     },
                     {
                       "color": "red",
-                      "value": 0.7
+                      "value": 60
                     }
                   ]
                 }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Fix Available"
-            },
-            "properties": [
+              },
               {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "true": {
-                        "color": "orange",
-                        "index": 0,
-                        "text": "YES — upgrade"
-                      },
-                      "false": {
-                        "color": "red",
-                        "index": 1,
-                        "text": "NO"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Remote"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "true": {
-                        "color": "red",
-                        "index": 0,
-                        "text": "YES"
-                      },
-                      "false": {
-                        "index": 1,
-                        "text": "no"
-                      },
-                      "unknown": {
-                        "color": "yellow",
-                        "index": 2,
-                        "text": "?"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Severity"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 110
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "CVE"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 150
+                "id": "custom.displayMode",
+                "value": "color-background"
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 10,
+        "w": 8,
+        "x": 0,
+        "y": 34
+      },
+      "id": 17,
       "options": {
-        "cellHeight": "sm",
         "footer": {
           "countRows": false,
-          "fields": "",
+          "enablePagination": false,
           "reducer": [
             "sum"
           ],
@@ -1856,12 +1118,8 @@
         "showHeader": true,
         "sortBy": [
           {
-            "desc": false,
-            "displayName": "Severity"
-          },
-          {
             "desc": true,
-            "displayName": "EPSS Score"
+            "displayName": "Unique CVEs"
           }
         ]
       },
@@ -1872,15 +1130,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "exemplar": false,
-          "expr": "(\n  (\n    debvulns_vulnerability_epss_score{instance=~\"$instance\"}\n      * on(cve, package, instance) group_left(severity, urgency, fix_available, remote)\n        debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"$severity\"}\n  )\n    * on(package, instance) group_left(installed_version)\n      debvulns_package_info{instance=~\"$instance\"}\n)\n  * on(cve, package, instance) group_left(fix_version)\n    debvulns_vulnerability_fix_info{instance=~\"$instance\"}",
+          "expr": "count by (instance) (count by (cve, instance) (debvulns_vulnerability_info{instance=~\"^$instance$\"}))",
           "format": "table",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
       ],
+      "title": "Unique CVEs per Instance",
       "transformations": [
         {
           "id": "organize",
@@ -1890,83 +1146,54 @@
               "__name__": true,
               "job": true
             },
-            "includeByName": {},
+            "renameByName": {
+              "instance": "Instance",
+              "Value": "Unique CVEs"
+            },
             "indexByName": {
               "instance": 0,
-              "severity": 1,
-              "cve": 2,
-              "package": 3,
-              "installed_version": 4,
-              "fix_version": 5,
-              "fix_available": 6,
-              "remote": 7,
-              "urgency": 8,
-              "Value": 9
-            },
-            "renameByName": {
-              "Value": "EPSS Score",
-              "cve": "CVE",
-              "fix_available": "Fix Available",
-              "fix_version": "Fix Version",
-              "installed_version": "Installed Version",
-              "instance": "Instance",
-              "package": "Package",
-              "remote": "Remote",
-              "severity": "Severity",
-              "urgency": "Urgency (Debian)"
+              "Value": 1
             }
           }
         }
-      ]
+      ],
+      "type": "table"
     },
     {
-      "id": 20,
-      "type": "table",
-      "title": "Top Packages by CVE Count",
-      "description": "Packages ranked by number of distinct CVEs in the selected severities. One 'apt upgrade <package>' here clears many findings at once — the cheapest remediation lever. Respects the $severity filter.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 67
-      },
+      "description": "All packages with at least one active CVE, ranked by number of distinct CVEs per instance. Use this to prioritise which packages to upgrade first — higher CVE count = broader attack surface for that package.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 5
-              },
-              {
-                "color": "red",
-                "value": 15
-              }
-            ]
+            "align": "left",
+            "displayMode": "auto",
+            "filterable": true
           }
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Package"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -1974,20 +1201,51 @@
             },
             "properties": [
               {
-                "id": "custom.cellOptions",
+                "id": "custom.width",
+                "value": 100
+              },
+              {
+                "id": "thresholds",
                 "value": {
-                  "type": "color-text"
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "blue"
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 5
+                    },
+                    {
+                      "color": "orange",
+                      "value": 15
+                    },
+                    {
+                      "color": "red",
+                      "value": 30
+                    }
+                  ]
                 }
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 10,
+        "w": 16,
+        "x": 8,
+        "y": 34
+      },
+      "id": 18,
       "options": {
-        "cellHeight": "sm",
         "footer": {
           "countRows": false,
-          "fields": "",
+          "enablePagination": true,
           "reducer": [
             "sum"
           ],
@@ -2008,15 +1266,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "exemplar": false,
-          "expr": "count by (instance, package) (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"$severity\"})",
+          "expr": "count by (package, instance) (debvulns_vulnerability_info{instance=~\"^$instance$\"})",
           "format": "table",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
       ],
+      "title": "Affected Packages by CVE Count",
       "transformations": [
         {
           "id": "organize",
@@ -2026,327 +1282,108 @@
               "__name__": true,
               "job": true
             },
-            "includeByName": {},
+            "renameByName": {
+              "package": "Package",
+              "instance": "Instance",
+              "Value": "CVE Count"
+            },
             "indexByName": {
               "package": 0,
               "instance": 1,
               "Value": 2
-            },
-            "renameByName": {
-              "Value": "CVE Count",
-              "instance": "Instance",
-              "package": "Package"
             }
           }
-        }
-      ]
-    },
-    {
-      "id": 21,
-      "type": "table",
-      "title": "Fleet Matrix — which host to patch first",
-      "description": "One row per instance: Debian suite, exporter version, installed package count, affected packages (all severities, including negligible) and unique critical/high CVEs. Built by joining four queries on the instance label.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 67
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Crit/High CVEs"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Crit/High CVEs"
-          }
-        ]
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "debvulns_exporter_info{instance=~\"$instance\"}",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "debvulns_installed_packages_count{instance=~\"$instance\"}",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "count by (instance) (debvulns_package_info{instance=~\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "count by (instance) (count by (cve, instance) (debvulns_vulnerability_info{instance=~\"$instance\", severity=~\"critical|high\"}))",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "D"
         }
       ],
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "job": true
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {}
-          }
-        },
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "instance",
-            "mode": "outer"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Value": true
-            },
-            "includeByName": {},
-            "indexByName": {
-              "instance": 0,
-              "suite": 1,
-              "version": 2,
-              "Value #1": 3,
-              "Value #2": 4,
-              "Value #3": 5
-            },
-            "renameByName": {
-              "Value #1": "Installed Packages",
-              "Value #2": "Affected Packages",
-              "Value #3": "Crit/High CVEs",
-              "instance": "Instance",
-              "suite": "Suite",
-              "version": "Exporter"
-            }
-          }
-        }
-      ]
+      "type": "table"
     }
   ],
-  "preload": false,
   "refresh": "5m",
   "schemaVersion": 42,
   "tags": [
-    "debvulns",
     "security",
-    "debian",
-    "vulnerabilities"
+    "debsecan",
+    "debian"
   ],
   "templating": {
     "list": [
       {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(debvulns_exporter_info, instance)",
+        "hide": 0,
         "includeAll": true,
-        "label": "Instance",
         "multi": true,
         "name": "instance",
         "options": [],
         "query": {
           "query": "label_values(debvulns_exporter_info, instance)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          "refId": "StandardVariableQuery"
         },
-        "refresh": 2,
+        "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
       {
-        "allValue": "critical|high|medium|low|negligible",
         "current": {
-          "selected": true,
-          "text": [
-            "critical",
-            "high",
-            "medium"
-          ],
-          "value": [
-            "critical",
-            "high",
-            "medium"
-          ]
+          "text": "All",
+          "value": "$__all"
         },
-        "description": "Derived severity (Debian urgency + EPSS) applied to the tables and KPI stats. Negligible is excluded by default to keep signal above noise.",
+        "hide": 0,
         "includeAll": true,
-        "label": "Severity",
         "multi": true,
         "name": "severity",
         "options": [
           {
-            "selected": true,
             "text": "critical",
             "value": "critical"
           },
           {
-            "selected": true,
             "text": "high",
             "value": "high"
           },
           {
-            "selected": true,
             "text": "medium",
             "value": "medium"
           },
           {
-            "selected": false,
             "text": "low",
             "value": "low"
           },
           {
-            "selected": false,
             "text": "negligible",
             "value": "negligible"
           }
         ],
+        "query": "critical,high,medium,low,negligible",
+        "skipUrlSync": false,
         "type": "custom"
       }
     ]
   },
   "time": {
-    "from": "now-7d",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
+      "30s",
       "1m",
       "5m",
       "15m",
       "30m",
-      "1h"
+      "1h",
+      "2h",
+      "1d"
     ]
   },
   "timezone": "browser",
-  "title": "Debian Vulnerabilities — debvulns",
-  "uid": "debvulns-overview",
-  "version": 1,
+  "title": "Debian Vulnerability Analysis (debvulns)",
+  "uid": "debvulns-vulnerabilities",
   "weekStart": ""
 }
-

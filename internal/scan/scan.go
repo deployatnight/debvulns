@@ -19,7 +19,9 @@ import (
 
 	"github.com/deployatnight/debvulns/internal/debpkg"
 	"github.com/deployatnight/debvulns/internal/epss"
+	"github.com/deployatnight/debvulns/internal/maxver"
 	"github.com/deployatnight/debvulns/internal/osv"
+	"github.com/deployatnight/debvulns/internal/version"
 	"github.com/deployatnight/debvulns/internal/vuln"
 )
 
@@ -53,6 +55,11 @@ type Options struct {
 	OSVCacheMaxAge  time.Duration // freshness TTL for the OSV results cache
 	OSVEnabled      bool          // cross-check non-Debian packages via OSV.dev
 	Logger          *log.Logger   // optional structured logger; nil = discard
+
+	// Max version tracking options
+	MaxVersionEnabled bool          // enable max version tracking for release-limited fixes
+	MaxVersionTTL     time.Duration // TTL for max version cache (default: 6h)
+	MaxVersionURL     string        // optional: custom URL for package lists
 }
 
 // Run executes the full scan pipeline and returns a populated Result.
@@ -111,6 +118,13 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 				continue
 			}
 			unique[key] = osvToVulnerability(entry)
+		}
+	}
+
+	// 5c. Enrich with max release versions if enabled.
+	if opts.MaxVersionEnabled {
+		if err := enrichWithMaxVersions(unique, opts); err != nil {
+			logf.Printf("max version enrichment failed: %v", err)
 		}
 	}
 
@@ -352,6 +366,57 @@ func loadOSV(ctx context.Context, opts Options, nonDebian []debpkg.Package, feed
 		}
 	}
 	return results, nil
+}
+
+// enrichWithMaxVersions enriches vulnerabilities with max release version info.
+func enrichWithMaxVersions(unique map[[2]string]vuln.Vulnerability, opts Options) error {
+	ttl := opts.MaxVersionTTL
+	if ttl == 0 {
+		ttl = 6 * time.Hour
+	}
+
+	tracker, err := maxver.New(maxver.Options{
+		Suite:    opts.Suite,
+		CacheDir: opts.CacheDir,
+		TTL:      ttl,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Enrich each vulnerability with max version info
+	for key, v := range unique {
+		maxVer := tracker.GetMaxVersion(v.Package)
+		if maxVer == "" {
+			continue
+		}
+		v.MaxReleaseVersion = maxVer
+
+		// Determine if fix is available within the release
+		fixVer := fixVersion(v)
+		if fixVer != "" {
+			if maxV, err := version.New(maxVer); err == nil {
+				if fixV, err := version.New(fixVer); err == nil {
+					v.FixInRelease = !fixV.Greater(maxV)
+				}
+			}
+		}
+
+		unique[key] = v
+	}
+
+	return nil
+}
+
+// fixVersion returns the fix version from a vulnerability (unstable or other).
+func fixVersion(v vuln.Vulnerability) string {
+	if v.UnstableVersion != nil && v.UnstableVersion.String() != "" {
+		return v.UnstableVersion.String()
+	}
+	if len(v.OtherVersions) > 0 {
+		return v.OtherVersions[0].String()
+	}
+	return ""
 }
 
 // ErrNoScanData is returned when a scan produces no usable data.
